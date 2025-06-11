@@ -23,36 +23,40 @@ class DocumentDB:
         Returns:
             MongoDB document ID
         """
-        document = {
-            "case_id": case_id,
-            "document_type": document_type,
-            "extracted_data": extracted_data,
-            "file_path": file_path,
-            "created_at": datetime.datetime.utcnow(),
-            "updated_at": datetime.datetime.utcnow()
-        }
+        # Check if case already exists
+        existing_case = self.collection.find_one({"case_id": case_id})
         
-        # Check if document already exists
-        existing_doc = self.collection.find_one({
-            "case_id": case_id,
-            "document_type": document_type
-        })
-        
-        if existing_doc:
-            # Update existing document
+        if existing_case:
+            # Update existing case with new document data
+            update_data = {
+                f"documents.{document_type}": {
+                    "extracted_data": extracted_data,
+                    "file_path": file_path,
+                    "updated_at": datetime.datetime.utcnow()
+                },
+                "updated_at": datetime.datetime.utcnow()
+            }
+            
             result = self.collection.update_one(
-                {"_id": existing_doc["_id"]},
-                {
-                    "$set": {
+                {"_id": existing_case["_id"]},
+                {"$set": update_data}
+            )
+            return existing_case["_id"]
+        else:
+            # Create new case with document data
+            document = {
+                "case_id": case_id,
+                "documents": {
+                    document_type: {
                         "extracted_data": extracted_data,
                         "file_path": file_path,
                         "updated_at": datetime.datetime.utcnow()
                     }
-                }
-            )
-            return existing_doc["_id"]
-        else:
-            # Insert new document
+                },
+                "created_at": datetime.datetime.utcnow(),
+                "updated_at": datetime.datetime.utcnow()
+            }
+            
             result = self.collection.insert_one(document)
             return result.inserted_id
     
@@ -67,35 +71,53 @@ class DocumentDB:
         Returns:
             Document data or list of documents
         """
-        query = {"case_id": case_id}
+        case = self.collection.find_one({"case_id": case_id})
+        
+        if not case or "documents" not in case:
+            return None
+        
         if document_type:
-            query["document_type"] = document_type
-            return self.collection.find_one(query)
+            # Return specific document type
+            if document_type in case["documents"]:
+                doc_data = case["documents"][document_type]
+                # Format to match the old structure for compatibility
+                return {
+                    "case_id": case_id,
+                    "document_type": document_type,
+                    "extracted_data": doc_data.get("extracted_data", {}),
+                    "file_path": doc_data.get("file_path"),
+                    "updated_at": doc_data.get("updated_at")
+                }
+            return None
         else:
-            return list(self.collection.find(query))
+            # Return all documents for the case
+            documents = []
+            for doc_type, doc_data in case["documents"].items():
+                documents.append({
+                    "case_id": case_id,
+                    "document_type": doc_type,
+                    "extracted_data": doc_data.get("extracted_data", {}),
+                    "file_path": doc_data.get("file_path"),
+                    "updated_at": doc_data.get("updated_at")
+                })
+            return documents
     
     def get_all_cases(self):
         """
-        Get a list of all unique case IDs
+        Get a list of all unique case IDs with metadata
         
         Returns:
-            List of case IDs
+            List of case IDs with document count and last updated time
         """
-        pipeline = [
-            {"$group": {
-                "_id": "$case_id",
-                "document_count": {"$sum": 1},
-                "last_updated": {"$max": "$updated_at"}
-            }},
-            {"$project": {
-                "case_id": "$_id",
-                "document_count": 1,
-                "last_updated": 1,
-                "_id": 0
-            }}
-        ]
-        
-        return list(self.collection.aggregate(pipeline))
+        cases = []
+        for case in self.collection.find({}, {"case_id": 1, "documents": 1, "updated_at": 1}):
+            doc_count = len(case.get("documents", {}))
+            cases.append({
+                "case_id": case["case_id"],
+                "document_count": doc_count,
+                "last_updated": case.get("updated_at")
+            })
+        return cases
     
     def store_comparison_results(self, case_id, comparison_data):
         """

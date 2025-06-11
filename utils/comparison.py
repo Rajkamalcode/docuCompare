@@ -58,6 +58,20 @@ except ImportError as e:
     
 import config
 
+# Global variable to store RAPID_SYSTEM data
+RAPID_SYSTEM = {}
+
+def set_rapid_system_data(data):
+    """
+    Set RAPID_SYSTEM data for comparison
+    
+    Args:
+        data: Dictionary containing RAPID_SYSTEM data
+    """
+    global RAPID_SYSTEM
+    RAPID_SYSTEM = data
+    logger.info(f"RAPID_SYSTEM data set: {len(RAPID_SYSTEM)} document types")
+
 def load_comparison_rules():
     """
     Load comparison rules from the CSV file
@@ -84,7 +98,12 @@ def load_comparison_rules():
                 
             # Check if this is a new document type
             if row[0]:
-                current_doc_type = row[1].lower().replace(' ', '_')
+                # Handle special case for "Memorandum of title deposits"
+                if "Memorandum of title" in row[1]:
+                    current_doc_type = "memorandum_of_title"
+                else:
+                    current_doc_type = row[1].lower().replace(' ', '_')
+                
                 if current_doc_type not in rules:
                     rules[current_doc_type] = {}
             
@@ -149,8 +168,33 @@ def compare_documents(case_id, documents_by_type):
                 # Extract the target document type
                 target_doc_type = rule.replace('Compare with ', '').lower().replace(' ', '_')
                 
+                # Check if comparing with RAPID_SYSTEM
+                if target_doc_type == 'rapid_system':
+                    # Check if we have RAPID_SYSTEM data for this document type
+                    if doc_type in RAPID_SYSTEM and 'fields' in RAPID_SYSTEM[doc_type]:
+                        rapid_data = RAPID_SYSTEM[doc_type]['fields']
+                        
+                        # Try to find a matching field in RAPID_SYSTEM data
+                        target_value = find_matching_field(rapid_data, field_name)
+                        
+                        # Compare the values
+                        comparison_result = compare_values(field_value, target_value)
+                        
+                        # Update the result
+                        results[doc_type][field_name].update({
+                            'status': 'compared',
+                            'target_document': 'RAPID_SYSTEM',
+                            'target_value': target_value,
+                            'result': comparison_result
+                        })
+                    else:
+                        # RAPID_SYSTEM data not found
+                        results[doc_type][field_name].update({
+                            'status': 'error',
+                            'message': f"RAPID_SYSTEM data not found for '{doc_type}'"
+                        })
                 # Check if we have the target document
-                if target_doc_type in documents_by_type:
+                elif target_doc_type in documents_by_type:
                     target_doc = documents_by_type[target_doc_type]
                     target_data = target_doc.get('extracted_data', {})
                     
@@ -387,7 +431,6 @@ def parse_date(date_str):
             return datetime.strptime(date_str.strip(), fmt)
         except ValueError:
             continue
-    
     # Try to extract a date using regex
     date_patterns = [
         r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})',  # dd/mm/yyyy or mm/dd/yyyy

@@ -54,6 +54,11 @@
             max-height: 300px;
             overflow-y: auto;
         }
+        .rapid-system-data {
+            margin-top: 10px;
+            padding-left: 20px;
+            border-left: 3px solid #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +96,7 @@
                                         <small class="text-muted">Select multiple document files to process</small>
                                     </div>
                                     <div id="documentTypeSelectors"></div>
+                                    <div id="rapidSystemSelectors"></div>
                                     <button type="submit" class="btn btn-primary">Process All Documents</button>
                                 </form>
                                 <div class="mt-3 loading" id="processAllLoading">
@@ -137,6 +143,18 @@
                                     <div id="filePreviewContainer" style="display: none;">
                                         <img id="filePreview" class="file-preview">
                                     </div>
+                                    <div class="mb-3">
+                                        <label for="rapidSystemData" class="form-label">RAPID System Data (Optional)</label>
+                                        <textarea class="form-control" id="rapidSystemData" rows="5" placeholder='{
+  "fields": {
+    "name": "Jane Smith",
+    "address": "123 Main St, Bangalore, Karnataka",
+    "id_number": "ABCDE1234F",
+    "date_of_birth": "10/05/1985"
+  }
+}'></textarea>
+                                        <small class="text-muted">Enter RAPID system data in JSON format for comparison</small>
+                                    </div>
                                     <button type="submit" class="btn btn-primary">Process Document</button>
                                 </form>
                                 <div class="mt-3 loading" id="processSingleLoading">
@@ -163,6 +181,28 @@
                                     <div class="mb-3">
                                         <label for="compareCaseId" class="form-label">Case ID</label>
                                         <input type="text" class="form-control" id="compareCaseId" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="compareRapidSystemData" class="form-label">RAPID System Data (Optional)</label>
+                                        <textarea class="form-control" id="compareRapidSystemData" rows="5" placeholder='{
+  "kyc": {
+    "fields": {
+      "name": "Jane Smith",
+      "address": "123 Main St, Bangalore, Karnataka",
+      "id_number": "ABCDE1234F",
+      "date_of_birth": "10/05/1985"
+    }
+  },
+  "sanction_letter": {
+    "fields": {
+      "borrower_name": "Jane Smith",
+      "loan_amount": "500000",
+      "tenure": "60",
+      "roi": "9.5"
+    }
+  }
+}'></textarea>
+                                        <small class="text-muted">Enter RAPID system data for multiple document types in JSON format</small>
                                     </div>
                                     <button type="submit" class="btn btn-primary">Compare Documents</button>
                                 </form>
@@ -285,8 +325,13 @@
                 const container = document.getElementById('documentTypeSelectors');
                 container.innerHTML = '';
                 
+                const rapidContainer = document.getElementById('rapidSystemSelectors');
+                rapidContainer.innerHTML = '';
+                
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
+                    
+                    // Create document type selector
                     const docTypeDiv = document.createElement('div');
                     docTypeDiv.className = 'document-type-selector mb-3';
                     
@@ -330,6 +375,29 @@
                     docTypeDiv.appendChild(docTypeLabel);
                     docTypeDiv.appendChild(docTypeSelect);
                     container.appendChild(docTypeDiv);
+                    
+                    // Create RAPID system data input
+                    const rapidDiv = document.createElement('div');
+                    rapidDiv.className = 'rapid-system-data mb-3';
+                    
+                    const rapidLabel = document.createElement('label');
+                    rapidLabel.className = 'form-label';
+                    rapidLabel.textContent = `RAPID System Data for "${file.name}" (Optional)`;
+                    
+                    const rapidTextarea = document.createElement('textarea');
+                    rapidTextarea.className = 'form-control';
+                    rapidTextarea.dataset.fileIndex = i;
+                    rapidTextarea.rows = 3;
+                    rapidTextarea.placeholder = `{
+  "fields": {
+    "name": "Jane Smith",
+    "address": "123 Main St, Bangalore, Karnataka"
+  }
+}`;
+                    
+                    rapidDiv.appendChild(rapidLabel);
+                    rapidDiv.appendChild(rapidTextarea);
+                    rapidContainer.appendChild(rapidDiv);
                 }
             });
         });
@@ -341,6 +409,17 @@
             const caseId = document.getElementById('singleCaseId').value;
             const documentType = document.getElementById('documentType').value;
             const documentFile = document.getElementById('documentFile').files[0];
+            const rapidSystemDataText = document.getElementById('rapidSystemData').value;
+            
+            let rapidSystemData = null;
+            if (rapidSystemDataText) {
+                try {
+                    rapidSystemData = JSON.parse(rapidSystemDataText);
+                } catch (error) {
+                    alert('Invalid RAPID System Data JSON format');
+                    return;
+                }
+            }
             
             if (!documentFile) {
                 alert('Please select a document file');
@@ -367,16 +446,23 @@
                 }
                 
                 // Process the document
+                const requestBody = {
+                    case_id: caseId,
+                    document_type: documentType,
+                    file_path: data.file_path
+                };
+                
+                // Add RAPID system data if provided
+                if (rapidSystemData) {
+                    requestBody.rapid_system_data = rapidSystemData;
+                }
+                
                 return fetch('/api/process_document', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        case_id: caseId,
-                        document_type: documentType,
-                        file_path: data.file_path
-                    })
+                    body: JSON.stringify(requestBody)
                 });
             })
             .then(response => response.json())
@@ -420,6 +506,7 @@
             const caseId = document.getElementById('allCaseId').value;
             const documentFiles = document.getElementById('documentFiles').files;
             const documentTypeSelectors = document.querySelectorAll('.document-type-selector select');
+            const rapidSystemInputs = document.querySelectorAll('.rapid-system-data textarea');
             
             if (documentFiles.length === 0) {
                 alert('Please select at least one document file');
@@ -444,7 +531,24 @@
                     select => parseInt(select.dataset.fileIndex) === i
                 );
                 
+                // Find the corresponding RAPID system data input
+                const rapidSystemInput = Array.from(rapidSystemInputs).find(
+                    textarea => parseInt(textarea.dataset.fileIndex) === i
+                );
+                
                 const documentType = docTypeSelector ? docTypeSelector.value : guessDocumentType(file.name);
+                
+                // Parse RAPID system data if provided
+                let rapidSystemData = null;
+                if (rapidSystemInput && rapidSystemInput.value) {
+                    try {
+                        rapidSystemData = JSON.parse(rapidSystemInput.value);
+                    } catch (error) {
+                        alert(`Invalid RAPID System Data JSON format for file "${file.name}"`);
+                        document.getElementById('processAllLoading').style.display = 'none';
+                        return;
+                    }
+                }
                 
                 uploadPromises.push(
                     fetch('/api/upload', {
@@ -457,10 +561,17 @@
                             throw new Error(data.error);
                         }
                         
-                        return {
+                        const docInfo = {
                             document_type: documentType,
                             file_path: data.file_path
                         };
+                        
+                        // Add RAPID system data if provided
+                        if (rapidSystemData) {
+                            docInfo.rapid_system_data = rapidSystemData;
+                        }
+                        
+                        return docInfo;
                     })
                 );
             }
@@ -519,6 +630,17 @@
             e.preventDefault();
             
             const caseId = document.getElementById('compareCaseId').value;
+            const rapidSystemDataText = document.getElementById('compareRapidSystemData').value;
+            
+            let rapidSystemData = null;
+            if (rapidSystemDataText) {
+                try {
+                    rapidSystemData = JSON.parse(rapidSystemDataText);
+                } catch (error) {
+                    alert('Invalid RAPID System Data JSON format');
+                    return;
+                }
+            }
             
             // Show loading indicator
             document.getElementById('compareLoading').style.display = 'block';
@@ -539,16 +661,24 @@
                         extracted_data: doc.extracted_data
                     }));
                     
+                    // Prepare request body
+                    const requestBody = {
+                        case_id: caseId,
+                        documents: documentsForComparison
+                    };
+                    
+                    // Add RAPID system data if provided
+                    if (rapidSystemData) {
+                        requestBody.rapid_system_data = rapidSystemData;
+                    }
+                    
                     // Compare documents
                     return fetch('/api/compare_documents', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            case_id: caseId,
-                            documents: documentsForComparison
-                        })
+                        body: JSON.stringify(requestBody)
                     });
                 })
                 .then(response => response.json())
@@ -605,22 +735,17 @@
                         const caseElement = document.createElement('a');
                         caseElement.href = '#';
                         caseElement.className = 'list-group-item list-group-item-action';
-                        caseElement.dataset.caseId = caseItem.case_id;
-                        
-                        const lastUpdated = new Date(caseItem.last_updated);
+                        caseElement.dataset.caseId = caseItem;
                         
                         caseElement.innerHTML = `
                             <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">${caseItem.case_id}</h5>
-                                <small>${lastUpdated.toLocaleDateString()}</small>
+                                <h5 class="mb-1">${caseItem}</h5>
                             </div>
-                            <p class="mb-1">Documents: ${caseItem.document_count}</p>
-                            <small>Last updated: ${lastUpdated.toLocaleString()}</small>
                         `;
                         
                         caseElement.addEventListener('click', function(e) {
                             e.preventDefault();
-                            loadCaseDetails(caseItem.case_id);
+                            loadCaseDetails(caseItem);
                             
                             // Highlight selected case
                             document.querySelectorAll('#caseList a').forEach(el => {
