@@ -5,7 +5,6 @@ import re
 from datetime import datetime
 import difflib
 import logging
-os.environ['USE_TF'] = '0'  # Force DocTR to use PyTorch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

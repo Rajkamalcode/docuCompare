@@ -8,7 +8,7 @@ from datetime import datetime
 # Import our modules
 from utils.db import DocumentDB
 from extractors import extract_document
-from utils.comparison import compare_documents, set_rapid_system_data
+from utils.comparison import compare_documents
 import config
 
 app = Flask(__name__)
@@ -73,57 +73,6 @@ def upload_file():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/set_rapid_system', methods=['POST'])
-def set_rapid_system():
-    """
-    Set RAPID_SYSTEM data for comparison
-    
-    Expected payload:
-    {
-        "type": "KYC",
-        "location": "kyc_document.pdf",
-        "fields": {
-            "name": "Jane Smith",
-            "address": "123 Main St, Bangalore, Karnataka",
-            "id_number": "ABCDE1234F",
-            "date_of_birth": "10/05/1985"
-        }
-    }
-    """
-    try:
-        data = request.json
-        
-        # Validate required fields
-        if not all(k in data for k in ['type', 'fields']):
-            return jsonify({"error": "Missing required fields"}), 400
-        
-        doc_type = data['type'].lower().replace(' ', '_')
-        
-        # Store in global RAPID_SYSTEM data
-        rapid_system_data = getattr(app, 'rapid_system_data', {})
-        rapid_system_data[doc_type] = data
-        app.rapid_system_data = rapid_system_data
-        
-        # Update comparison module
-        set_rapid_system_data(rapid_system_data)
-        
-        return jsonify({
-            "status": "success",
-            "message": f"RAPID_SYSTEM data set for {doc_type}"
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/get_rapid_system', methods=['GET'])
-def get_rapid_system():
-    """Get all RAPID_SYSTEM data"""
-    try:
-        rapid_system_data = getattr(app, 'rapid_system_data', {})
-        return jsonify({"status": "success", "data": rapid_system_data})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/process_document', methods=['POST'])
 def process_document():
     """
@@ -133,13 +82,7 @@ def process_document():
     {
         "case_id": "unique_case_id",
         "document_type": "sanction_letter",
-        "file_path": "path/to/document.pdf",
-        "rapid_system_data": {  # Optional
-            "fields": {
-                "name": "John Doe",
-                "address": "456 Oak St, Mumbai, Maharashtra"
-            }
-        }
+        "file_path": "path/to/document.pdf"
     }
     """
     try:
@@ -152,20 +95,6 @@ def process_document():
         case_id = data['case_id']
         document_type = data['document_type']
         file_path = data['file_path']
-        
-        # Check if RAPID_SYSTEM data is provided
-        if 'rapid_system_data' in data and data['rapid_system_data']:
-            # Store in global RAPID_SYSTEM data
-            rapid_system_data = getattr(app, 'rapid_system_data', {})
-            rapid_system_data[document_type] = {
-                'type': document_type,
-                'location': file_path,
-                'fields': data['rapid_system_data'].get('fields', {})
-            }
-            app.rapid_system_data = rapid_system_data
-            
-            # Update comparison module
-            set_rapid_system_data(rapid_system_data)
         
         # Check if file exists
         if not os.path.exists(file_path):
@@ -237,15 +166,7 @@ def compare_documents_api():
                 "extracted_data": {...}
             },
             ...
-        ],
-        "rapid_system_data": {  # Optional
-            "kyc": {
-                "fields": {
-                    "name": "John Doe",
-                    "address": "456 Oak St, Mumbai, Maharashtra"
-                }
-            }
-        }
+        ]
     }
     """
     try:
@@ -257,20 +178,6 @@ def compare_documents_api():
         
         case_id = data['case_id']
         documents = data['documents']
-        
-        # Check if RAPID_SYSTEM data is provided
-        if 'rapid_system_data' in data and data['rapid_system_data']:
-            # Store in global RAPID_SYSTEM data
-            rapid_system_data = getattr(app, 'rapid_system_data', {})
-            for doc_type, doc_data in data['rapid_system_data'].items():
-                rapid_system_data[doc_type] = {
-                    'type': doc_type,
-                    'fields': doc_data.get('fields', {})
-                }
-            app.rapid_system_data = rapid_system_data
-            
-            # Update comparison module
-            set_rapid_system_data(rapid_system_data)
         
         # Organize documents by type
         documents_by_type = {}
@@ -369,13 +276,7 @@ def process_all_documents():
         "documents": [
             {
                 "document_type": "sanction_letter",
-                "file_path": "path/to/document.pdf",
-                "rapid_system_data": {  # Optional
-                    "fields": {
-                        "name": "John Doe",
-                        "address": "456 Oak St, Mumbai, Maharashtra"
-                    }
-                }
+                "file_path": "path/to/document.pdf"
             },
             {
                 "document_type": "legal_report",
@@ -405,20 +306,6 @@ def process_all_documents():
             
             document_type = doc['document_type']
             file_path = doc['file_path']
-            
-            # Check if RAPID_SYSTEM data is provided
-            if 'rapid_system_data' in doc and doc['rapid_system_data']:
-                # Store in global RAPID_SYSTEM data
-                rapid_system_data = getattr(app, 'rapid_system_data', {})
-                rapid_system_data[document_type] = {
-                    'type': document_type,
-                    'location': file_path,
-                    'fields': doc['rapid_system_data'].get('fields', {})
-                }
-                app.rapid_system_data = rapid_system_data
-                
-                # Update comparison module
-                set_rapid_system_data(rapid_system_data)
             
             # Check if file exists
             if not os.path.exists(file_path):
