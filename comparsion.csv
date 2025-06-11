@@ -1,0 +1,48 @@
+1,Memorandum of title deposits/Equitable Mortgage/Registered Mortgage/Intimation of Mortgage proof,Customer Name,Compare with sanction letter
+,,Loan Amount,Compare with sanction letter
+,,Four boundaries,Compare with Legal report
+,,Property Address,Compare with sanction letter
+,,in favour ,Should be Cholamandalam Investment and finance company limited
+2,"Repayment KIT - ENACH, PDC AND NACH",Account holder Name,Compare with sanction letter
+,,Account Number,Compare Rapid system and Cheque/ENACH Copy
+,,IFSC Code,Compare Rapid system and Cheque/ENACH Copy
+,,Account Type,should be Saving / Current account 
+,,Customer Signature,Availability of signature
+,,in favour ,Should be Cholamandalam Investment and finance company limited
+,,ENACH - SPDC,1. PDC not required to collect if the ENACH registered for EMI and Security mandate.
+,,,"2. if the ENACH done for EMI mandate alone, then 1 SPDC required"
+,,,"3. if the ENACH not for both EMI and Security mandate, then 5 SPDC required "
+3,Agreement,DPN,Borrowers’ signatures in the revenue stamp
+,,DPN,"Lead ID, Customer Name"
+,,DPN,Loan Amount
+,,Schedule Page,All the details of sanction letter should be match
+,,Schedule Page,Availability of borrows signature and Chola Authorized Signature
+4,KYC,Borrowers Name,Compare with RAPID system
+,,DOB,Compare with RAPID system
+,,Gender,Compare with RAPID system
+,,Address,Compare with RAPID system
+,,KYC Number,Compare with RAPID system
+,,Aadhar Number,First 8 digits has to be masked in Aadhar copy
+5,Sanction Letter,Lead ID,Compare with RAPID system
+,,KYC Address,Compare with KYC 
+,,Borrowers Name,Compare with RAPID system
+,,Loan Amount,Compare with RAPID system
+,,EMI Amount,Compare with RAPID system
+,,Tenure,Compare with RAPID system
+,,ROI,Compare with RAPID system
+,,Property Address,Compare with Legal report
+,,Borrowers Signature,Availability of borrows signature
+,,Authorized Signature,Availability of Chola Authorized signature
+6,Legal Report,Lead ID,Compare with sanction letter
+,,Customer Name,Compare with sanction letter
+,,Property Owner Name,Compare with sanction letter
+,,Property Address,Compare with sanction letter
+,,Legal Vendor Signature,Availability of vendor signature
+7,Vetting Report,Date,The date should be after legal report
+,,Customer Name,Compare with sanction letter
+,,Legal Vendor Signature,Availability of vendor signature
+8,Annexure,Date,The date should be greater than the dates of document collected 
+,,Lead ID,Compare with RAPID system
+,,Branch,Compare with RAPID system
+,,Customer Name,Compare with RAPID system
+,,Authorized Signature,Availability of Chola Authorized signature
