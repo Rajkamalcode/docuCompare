@@ -199,7 +199,7 @@ def extract_details(case_id, file_path):
     else:
         # Try extraction with Ollama
         extracted_fields, validation_result = extract_fields_with_ollama(document_text)
-        print(extract_fields)
+        print(extracted_fields)
         # Determine if we need to fall back to Vertex AI
         use_vertex_fallback = False
         
