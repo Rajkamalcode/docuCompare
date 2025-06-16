@@ -98,7 +98,12 @@ def set_rapid_system():
         if not all(k in data for k in ['type', 'fields']):
             return jsonify({"error": "Missing required fields"}), 400
         
-        doc_type = data['type'].lower().replace(' ', '_')
+        # Fix: Check if type is a string before calling lower()
+        if isinstance(data['type'], str):
+            doc_type = data['type'].lower().replace(' ', '_')
+        else:
+            # Handle the case where type is not a string (e.g., it's a dict)
+            return jsonify({"error": "The 'type' field must be a string"}), 400
         
         # Store in global RAPID_SYSTEM data
         rapid_system_data = getattr(app, 'rapid_system_data', {})
@@ -115,6 +120,8 @@ def set_rapid_system():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 @app.route('/api/get_rapid_system', methods=['GET'])
 def get_rapid_system():
@@ -153,6 +160,10 @@ def process_document():
         case_id = data['case_id']
         document_type = data['document_type']
         file_path = data['file_path']
+        
+        # Ensure document_type is a string
+        if not isinstance(document_type, str):
+            return jsonify({"error": f"Document type must be a string, got {type(document_type)}"}), 400
         
         # Check if RAPID_SYSTEM data is provided
         if 'rapid_system_data' in data and data['rapid_system_data']:
@@ -264,6 +275,10 @@ def compare_documents_api():
             # Store in global RAPID_SYSTEM data
             rapid_system_data = getattr(app, 'rapid_system_data', {})
             for doc_type, doc_data in data['rapid_system_data'].items():
+                # Ensure doc_type is a string
+                if not isinstance(doc_type, str):
+                    return jsonify({"error": f"Document type must be a string, got {type(doc_type)}"}), 400
+                
                 rapid_system_data[doc_type] = {
                     'type': doc_type,
                     'fields': doc_data.get('fields', {})
@@ -277,6 +292,10 @@ def compare_documents_api():
         documents_by_type = {}
         for doc in documents:
             if 'document_type' in doc and 'extracted_data' in doc:
+                # Ensure document_type is a string
+                if not isinstance(doc['document_type'], str):
+                    return jsonify({"error": f"Document type must be a string, got {type(doc['document_type'])}"}), 400
+                
                 documents_by_type[doc['document_type']] = doc
         
         # Compare documents
@@ -407,6 +426,10 @@ def process_all_documents():
             document_type = doc['document_type']
             file_path = doc['file_path']
             
+            # Ensure document_type is a string
+            if not isinstance(document_type, str):
+                return jsonify({"error": f"Document type must be a string, got {type(document_type)}"}), 400
+            
             # Check if RAPID_SYSTEM data is provided
             if 'rapid_system_data' in doc and doc['rapid_system_data']:
                 # Store in global RAPID_SYSTEM data
@@ -464,6 +487,7 @@ def process_all_documents():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5444)
